@@ -1,7 +1,8 @@
-CM_BASEPATH = '../cibusmod'
+CM_BASEPATH = "../cibusmod"
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.getcwd(), CM_BASEPATH))
 
 import CIBUSmod as cm
@@ -23,59 +24,44 @@ from itertools import product
 
 # Create session
 session = cm.Session(
-    name = 'main',
-    data_path = "data",
-    data_path_default = CM_BASEPATH + "/data/default",
+    name="main",
+    data_path="data",
+    data_path_default=CM_BASEPATH + "/data/default",
 )
 
 # Load scenarios
 # ==============
 
 session.add_scenario(
-    "BASELINE",
-    years=[2020],
-    pars = "all",
-    scenario_workbooks="default_fix"
+    "BASELINE", years=[2020], pars="all", scenario_workbooks="default_fix"
 )
 
-session.add_scenario(
-    "SCN_BASE",
-    years=[2020],
-    pars = "all",
-    scenario_workbooks="base"
-)
+session.add_scenario("SCN_BASE", years=[2020], pars="all", scenario_workbooks="base")
 
 session.add_scenario(
-    "SCN_MIN_LEY",
-    years=[2020],
-    pars = "all",
-    scenario_workbooks=["base", "scn-min-ley"]
+    "SCN_MIN_LEY", years=[2020], pars="all", scenario_workbooks=["base", "scn-min-ley"]
 )
 
 session.add_scenario(
     "SCN_REDUCED_MILK",
     years=[2020],
-    pars = "all",
-    scenario_workbooks=["base", "scn-milk"]
+    pars="all",
+    scenario_workbooks=["base", "scn-milk"],
 )
 
-session.add_scenario(
-    "SCN_SNG",
-    years=[2020],
-    pars = "all",
-    scenario_workbooks="base"
-)
+session.add_scenario("SCN_SNG", years=[2020], pars="all", scenario_workbooks="base")
+
 
 def improve_numerics(self):
     from CIBUSmod.optimisation.feed_dist import IndexedMatrix
 
     for name, C in self.constraints.items():
-        M = [obj for obj in C['pars'].values() if isinstance(obj, IndexedMatrix)]
+        M = [obj for obj in C["pars"].values() if isinstance(obj, IndexedMatrix)]
         assert len(M) == 1, "Expected one and only one IndexedMatrix"
         M = M[0]
         max_val = M.M.max()
-        for name, obj in C['pars'].items():
-            if isinstance(obj,IndexedMatrix):
+        for name, obj in C["pars"].items():
+            if isinstance(obj, IndexedMatrix):
                 obj.M = obj.M / max_val
             else:
                 obj[:] = obj / max_val
@@ -92,31 +78,29 @@ SCENARIOS = [
 ]
 
 for scn in SCENARIOS:
-
     retrievers = {
-        'Regions': cm.ParameterRetriever('Regions'),
-        'DemandAndConversions': cm.ParameterRetriever('DemandAndConversions'),
-        'CropProduction': cm.ParameterRetriever('CropProduction'),
-        'FeedMgmt': cm.ParameterRetriever('FeedMgmt'),
-        'GeoDistributor': cm.ParameterRetriever('GeoDistributor'),
+        "Regions": cm.ParameterRetriever("Regions"),
+        "DemandAndConversions": cm.ParameterRetriever("DemandAndConversions"),
+        "CropProduction": cm.ParameterRetriever("CropProduction"),
+        "FeedMgmt": cm.ParameterRetriever("FeedMgmt"),
+        "GeoDistributor": cm.ParameterRetriever("GeoDistributor"),
     }
 
     cm.ParameterRetriever.update_all_parameter_values(**session[scn], year=2020)
 
     # Instatiate Regions
     regions = cm.Regions(
-        par = retrievers['Regions'],
+        par=retrievers["Regions"],
     )
 
     # Instantiate DemandAndConversions
     demand = cm.DemandAndConversions(
-        par = retrievers['DemandAndConversions'],
+        par=retrievers["DemandAndConversions"],
     )
 
     # Instantiate CropProduction
     crops = cm.CropProduction(
-        par = retrievers['CropProduction'],
-        index = regions.data_attr.get('x0_crops').index
+        par=retrievers["CropProduction"], index=regions.data_attr.get("x0_crops").index
     )
 
     # Instantiate AnimalHerds
@@ -125,82 +109,77 @@ for scn in SCENARIOS:
 
     # Instantiate feed management
     feed_mgmt = cm.FeedMgmt(
-        herds = herds,
-        par = retrievers['FeedMgmt'],
+        herds=herds,
+        par=retrievers["FeedMgmt"],
     )
 
     # Instantiate geo distributor
     optproblem = cm.FeedDistributor(
-        regions = regions,
-        demand = demand,
-        crops = crops,
-        herds = herds,
-        feed_mgmt = feed_mgmt,
-        par = retrievers['GeoDistributor'],
+        regions=regions,
+        demand=demand,
+        crops=crops,
+        herds=herds,
+        feed_mgmt=feed_mgmt,
+        par=retrievers["GeoDistributor"],
     )
 
     self = optproblem
 
-
     # Instantiate WasteAndCircularity
     waste = cm.WasteAndCircularity(
-        demand = demand,
-        crops = crops,
-        herds = herds,
-        par = cm.ParameterRetriever('WasteAndCircularity')
+        demand=demand,
+        crops=crops,
+        herds=herds,
+        par=cm.ParameterRetriever("WasteAndCircularity"),
     )
 
     # Instantiate by-product management
     byprod_mgmt = cm.ByProductMgmt(
-        demand = demand,
-        herds = herds,
-        par = cm.ParameterRetriever('ByProductMgmt')
+        demand=demand, herds=herds, par=cm.ParameterRetriever("ByProductMgmt")
     )
 
     # Instantiate manure management
     manure_mgmt = cm.ManureMgmt(
-        herds = herds,
-        feed_mgmt = feed_mgmt,
-        par = cm.ParameterRetriever('ManureMgmt'),
-        settings = {
-            'NPK_excretion_from_balance' : True
-        }
+        herds=herds,
+        feed_mgmt=feed_mgmt,
+        par=cm.ParameterRetriever("ManureMgmt"),
+        settings={"NPK_excretion_from_balance": True},
     )
 
     # Instantiate crop residue managment
     crop_residue_mgmt = cm.CropResidueMgmt(
-        demand = demand,
-        crops = crops,
-        herds = herds,
-        par = cm.ParameterRetriever('CropResidueMgmt')
+        demand=demand,
+        crops=crops,
+        herds=herds,
+        par=cm.ParameterRetriever("CropResidueMgmt"),
     )
 
     # Instantiate plant nutrient management
     plant_nutrient_mgmt = cm.PlantNutrientMgmt(
-        demand = demand,
-        regions = regions,
-        crops = crops,
-        waste = waste,
-        herds = herds,
-        par = cm.ParameterRetriever('PlantNutrientMgmt')
+        demand=demand,
+        regions=regions,
+        crops=crops,
+        waste=waste,
+        herds=herds,
+        par=cm.ParameterRetriever("PlantNutrientMgmt"),
     )
 
     # Instatiate machinery and energy management
-    machinery_and_energy_mgmt  = cm.MachineryAndEnergyMgmt(
-        regions = regions,
-        crops = crops,
-        waste = waste,
-        herds = herds,
-        par = cm.ParameterRetriever('MachineryAndEnergyMgmt')
+    machinery_and_energy_mgmt = cm.MachineryAndEnergyMgmt(
+        regions=regions,
+        crops=crops,
+        waste=waste,
+        herds=herds,
+        par=cm.ParameterRetriever("MachineryAndEnergyMgmt"),
     )
 
     # Instatiate inputs management
     inputs = cm.InputsMgmt(
-        demand = demand,
-        crops = crops,
-        waste = waste,
-        herds = herds,
-        par = cm.ParameterRetriever('InputsMgmt')
+        demand=demand,
+        crops=crops,
+        waste=waste,
+        herds=herds,
+        par=cm.ParameterRetriever("InputsMgmt"),
     )
 
     def mgmt_calculate():
@@ -233,18 +212,82 @@ for scn in SCENARIOS:
         h.calculate()
 
     SCN_KWARGS = {}
-    cons=[1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 14]
+    cons = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 14]
     if scn == "SCN_SNG":
         TOL = 0.01
 
         self.make_x0()
-        sng_areas = self.x0['crp'].loc[['Semi-natural pastures', 'Semi-natural pastures, thin soils', 'Semi-natural pastures, wooded']]
-        SCN_KWARGS = {
-            "C8_crp": sng_areas * (1 - TOL),
-            "C8_rel": '>='
-        }
+        sng_areas = self.x0["crp"].loc[
+            [
+                "Semi-natural pastures",
+                "Semi-natural pastures, thin soils",
+                "Semi-natural pastures, wooded",
+            ]
+        ]
+        SCN_KWARGS = {"C8_crp": sng_areas * (1 - TOL), "C8_rel": ">="}
         cons.append(8)
         cons.sort()
+
+    def make_CX_organic(tol=0.001):
+        cr_x0_org = self.x0["crp"].xs("organic", level="prod_system")
+        cr_x0_con = self.x0["crp"].xs("conventional", level="prod_system")
+        both_zero = cr_x0_org[cr_x0_org == 0].index.intersection(
+            cr_x0_con[cr_x0_con == 0].index
+        )
+        cr_x0_org = cr_x0_org.reindex(cr_x0_org.index.difference(both_zero))
+
+        shares_df = (
+            (cr_x0_org / cr_x0_con.reindex(cr_x0_org.index, fill_value=0))
+            .replace({np.inf: np.nan, -np.inf: np.nan})
+            .fillna(1)
+            .to_frame(name="share")
+        )
+        shares_df *= 1 - tol
+
+        col_idx = self.x_idx["crp"]
+        row_idx = cr_x0_org.index
+
+        row_idx_df = row_idx.to_frame(index=False).reset_index(names="row_i")
+        col_idx_df = col_idx.to_frame(index=False).reset_index(names="col_i")
+
+        merged = row_idx_df.merge(col_idx_df, on=["crop", "region"]).merge(
+            shares_df, on=["crop", "region"]
+        )
+        merged["values"] = np.where(
+            merged["prod_system"] == "organic", 1 - merged["share"], -merged["share"]
+        )
+
+        n_rows = len(row_idx)
+        n_cols = len(col_idx)
+
+        row_i = merged["row_i"].to_numpy()
+        col_i = merged["col_i"].to_numpy()
+        values = merged["values"].to_numpy()
+
+        M = scipy.sparse.hstack(
+            [
+                scipy.sparse.csc_array((n_rows, len(self.x_idx["ani"]))),
+                scipy.sparse.coo_array(
+                    (values, (row_i, col_i)), shape=(n_rows, n_cols)
+                ).tocsc(),
+                scipy.sparse.csc_array((n_rows, len(self.x_idx["fds"]))),
+            ],
+            format="csc",
+        )
+
+        IM = IndexedMatrix(M, row_idx=row_idx, col_idx={})
+
+        self.constraints["CX: Organic ratio"] = {
+            "left": lambda x, A: A.M @ x,
+            "right": lambda A: 0,
+            "rel": ">=",
+            "pars": {"A": IM},
+        }
+
+    if "_ORG" in scn:
+        make_CX_organic()
+        if 7 in cons:
+            self.make_C7()
 
     self.make(cons, verbose=True, **SCN_KWARGS)
 
@@ -258,17 +301,16 @@ for scn in SCENARIOS:
         self.solve(
             apply_solution=True,
             verbose=True,
-            solver_settings=[{
-                "solver": "GUROBI",
-                "reoptimize": True,
-                "verbose": True,
-            }]
+            solver_settings=[
+                {
+                    "solver": "GUROBI",
+                    "reoptimize": True,
+                    "verbose": True,
+                }
+            ],
         )
         mgmt_calculate()
-        session.store(
-            scn, 2020,
-            demand, regions, crops, herds, optproblem, waste
-        )
+        session.store(scn, 2020, demand, regions, crops, herds, optproblem, waste)
 
         continue
 
@@ -301,7 +343,7 @@ for scn in SCENARIOS:
                 ("organic", "cattle", "meat"),
                 ("organic", "cattle", "milk"),
             ],
-            names=["prod_system", "species", "animal_prod"]
+            names=["prod_system", "species", "animal_prod"],
         )
 
         # Get col index from animal herds (sp,br,ss,ps,re)
@@ -346,20 +388,27 @@ for scn in SCENARIOS:
                     continue
 
                 val.extend(res)
-                col_nr.extend([col_idx.get_loc((sp, br, ps, ss, re)) for re in res.index])
+                col_nr.extend(
+                    [col_idx.get_loc((sp, br, ps, ss, re)) for re in res.index]
+                )
                 row_nr.extend(np.zeros(len(res)))
 
         # Aggregate data_coords_pair to ensure that any overlapping values are summed rather than replace each other
         val, (row_nr, col_nr) = aggregate_data_coords_pair(val, row_nr, col_nr)
 
         # Create Compressed Sparse Column matrix
-        return scipy.sparse.coo_array((val, (row_nr, col_nr)), shape=(1, len(col_idx))).tocsc()
+        return scipy.sparse.coo_array(
+            (val, (row_nr, col_nr)), shape=(1, len(col_idx))
+        ).tocsc()
 
     def make_protein_mask_crp():
-        val_df = (
-            crops.data_attr.get('harvest').loc[['Wheat (add)']].reindex(self.x_idx_short["crp"]).fillna(0) * [PROTEIN_CONTENTS[ADDED_WHEAT]]
-            + crops.data_attr.get('harvest').loc[['Peas (add)']].reindex(self.x_idx_short["crp"]).fillna(0) * [PROTEIN_CONTENTS[ADDED_PEAS]]
-        )
+        val_df = crops.data_attr.get("harvest").loc[["Wheat (add)"]].reindex(
+            self.x_idx_short["crp"]
+        ).fillna(0) * [PROTEIN_CONTENTS[ADDED_WHEAT]] + crops.data_attr.get(
+            "harvest"
+        ).loc[["Peas (add)"]].reindex(self.x_idx_short["crp"]).fillna(0) * [
+            PROTEIN_CONTENTS[ADDED_PEAS]
+        ]
 
         return scipy.sparse.csc_array(np.atleast_2d(val_df.values))
 
@@ -389,39 +438,33 @@ for scn in SCENARIOS:
         ]
 
         # Define problem
-        self.problem = cvxpy.Problem(
-            objective=objective,
-            constraints=constraints
-        )
+        self.problem = cvxpy.Problem(objective=objective, constraints=constraints)
 
     protein_mask_as_opt_goal()
     self.solve(
         apply_solution=False,
         verbose=True,
-        solver_settings=[{
-            "solver": "GUROBI",
-            "reoptimize": True,
-            "verbose": True,
-
-            #"GURO_PAR_DUMP": 1,
-
-            # Custom params
-            "BarConvTol": 1e-8,
-            # Sometimes setting Aggregate=0 can improve the model numerics
-            # "Aggregate": 0,
-
-            "NumericFocus": 3,
-            # Useful for recognizing infeasibility or unboundedness, but a bit slower than the default algorithm.
-            # values: -1 auto, 0 off, 1 force on.
-            "BarHomogeneous": 1,
-
-            # Gurobi has three different heuristic algorithms to find scaling factors. Higher values for the ScaleFlag uses more aggressive heuristics to improve the constraint matrix numerics for the scaled model.
-            "ScaleFlag": 2,
-
-            # All constraints must be satisfied to a tolerance of FeasibilityTol.
-            # default 1e-6
-            "FeasibilityTol": 1e-3,
-        }]
+        solver_settings=[
+            {
+                "solver": "GUROBI",
+                "reoptimize": True,
+                "verbose": True,
+                # "GURO_PAR_DUMP": 1,
+                # Custom params
+                "BarConvTol": 1e-8,
+                # Sometimes setting Aggregate=0 can improve the model numerics
+                # "Aggregate": 0,
+                "NumericFocus": 3,
+                # Useful for recognizing infeasibility or unboundedness, but a bit slower than the default algorithm.
+                # values: -1 auto, 0 off, 1 force on.
+                "BarHomogeneous": 1,
+                # Gurobi has three different heuristic algorithms to find scaling factors. Higher values for the ScaleFlag uses more aggressive heuristics to improve the constraint matrix numerics for the scaled model.
+                "ScaleFlag": 2,
+                # All constraints must be satisfied to a tolerance of FeasibilityTol.
+                # default 1e-6
+                "FeasibilityTol": 1e-3,
+            }
+        ],
     )
 
     print(f"Max protein calculated as:\n{self.problem.value:e}")
@@ -437,7 +480,7 @@ for scn in SCENARIOS:
             "left": lambda x, M, b: M @ x - b,
             "right": lambda M, b: 0,
             "rel": ">=",
-            "pars": { "M": prot_mask, "b": b }
+            "pars": {"M": prot_mask, "b": b},
         }
 
     self.constraints["CX: Protein"] = protein_map_as_cons(0.975)
@@ -448,16 +491,15 @@ for scn in SCENARIOS:
     self.solve(
         apply_solution=False,
         verbose=True,
-        solver_settings=[{
-            "solver": "GUROBI",
-            "reoptimize": True,
-            "verbose": True,
-        }]
+        solver_settings=[
+            {
+                "solver": "GUROBI",
+                "reoptimize": True,
+                "verbose": True,
+            }
+        ],
     )
     self.apply_solution()
     mgmt_calculate()
 
-    session.store(
-        scn, 2020,
-        demand, regions, crops, herds, optproblem, waste
-    )
+    session.store(scn, 2020, demand, regions, crops, herds, optproblem, waste)
