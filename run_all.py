@@ -32,6 +32,15 @@ session = cm.Session(
 # Load scenarios
 # ==============
 
+SCENARIOS = [
+    "BASELINE",
+    "SCN_BASE",
+    "SCN_MIN_LEY",
+    "SCN_REDUCED_MILK",
+    "SCN_SNG",
+    "SCN_ORG",
+]
+
 session.add_scenario(
     "BASELINE", years=[2020], pars="all", scenario_workbooks="default_fix"
 )
@@ -50,6 +59,7 @@ session.add_scenario(
 )
 
 session.add_scenario("SCN_SNG", years=[2020], pars="all", scenario_workbooks="base")
+session.add_scenario("SCN_ORG", years=[2020], pars="all", scenario_workbooks="base")
 
 
 def improve_numerics(self):
@@ -68,14 +78,6 @@ def improve_numerics(self):
 
     print("Completed rescaling of matrices.")
 
-
-SCENARIOS = [
-    "BASELINE",
-    "SCN_BASE",
-    "SCN_MIN_LEY",
-    "SCN_REDUCED_MILK",
-    "SCN_SNG",
-]
 
 for scn in SCENARIOS:
     retrievers = {
@@ -105,7 +107,12 @@ for scn in SCENARIOS:
 
     # Instantiate AnimalHerds
     # Each AnimalHerd object is stored in an indexed pandas.Series
-    herds = cm.make_herds(regions)
+    herds = cm.make_herds(
+        regions,
+        sub_systems={
+            "sheep": ["autumn lamb", "spring lamb", "winter lamb", "other sheep"]
+        },
+    )
 
     # Instantiate feed management
     feed_mgmt = cm.FeedMgmt(
@@ -211,22 +218,29 @@ for scn in SCENARIOS:
     for h in herds:
         h.calculate()
 
-    SCN_KWARGS = {}
-    cons = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 14]
-    if scn == "SCN_SNG":
-        TOL = 0.01
+    cons = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]
+    if scn == "BASELINE":
+        cons.remove(8)
 
-        self.make_x0()
-        sng_areas = self.x0["crp"].loc[
-            [
-                "Semi-natural pastures",
-                "Semi-natural pastures, thin soils",
-                "Semi-natural pastures, wooded",
-            ]
+    self.make_x0()
+    sng_other_areas = self.x0["crp"].loc[
+        [
+            "Semi-natural meadows",
+            "Semi-natural pastures, thin soils",
+            "Semi-natural pastures, wooded",
         ]
-        SCN_KWARGS = {"C8_crp": sng_areas * (1 - TOL), "C8_rel": ">="}
-        cons.append(8)
-        cons.sort()
+    ]
+
+    C8_crp = [sng_other_areas]
+    C8_rel = ["<="]
+
+    if scn == "SCN_SNG":
+        tol = 0.01
+        sng_areas = self.x0["crp"].loc[["Semi-natural pastures"]]
+        C8_crp += [sng_areas * (1 - tol)]
+        C8_rel += [">="]
+
+    self.make(cons, verbose=True, C8_crp=C8_crp, C8_rel=C8_rel)
 
     def make_CX_organic(tol=0.001):
         cr_x0_org = self.x0["crp"].xs("organic", level="prod_system")
@@ -288,8 +302,6 @@ for scn in SCENARIOS:
         make_CX_organic()
         if 7 in cons:
             self.make_C7()
-
-    self.make(cons, verbose=True, **SCN_KWARGS)
 
     improve_numerics(optproblem)
 
