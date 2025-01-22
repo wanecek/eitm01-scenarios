@@ -501,11 +501,11 @@ for scn in SCENARIOS:
     print(f"Max protein calculated as:\n{self.problem.value:e}")
     max_protein_amount = self.problem.value
 
-    def protein_map_as_cons(factor=0.9):
+    def protein_map_as_cons(max_protein_amount):
         if max_protein_amount is None:
             raise Exception("Could not get the optimal value from the problem")
 
-        b = max_protein_amount * factor
+        b = max_protein_amount
 
         return {
             "left": lambda x, M, b: M @ x - b,
@@ -514,7 +514,7 @@ for scn in SCENARIOS:
             "pars": {"M": prot_mask, "b": b},
         }
 
-    self.constraints["CX: Protein"] = protein_map_as_cons(0.975)
+    self.constraints["CX: Protein"] = protein_map_as_cons(0.95 * max_protein_amount)
     # Overwrite old problem with standard optimization objective,
     # but with the protein constraint added
     self.problem = self.get_cvx_problem()
