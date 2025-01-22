@@ -76,6 +76,20 @@ def improve_numerics(self):
 
 
 for scn in SCENARIOS:
+    print("/"*80)
+    print("/"*80)
+    print("/"*80)
+    print("/"*80)
+    print("/"*80)
+    print("")
+    print(scn)
+    print("")
+    print("\\"*80)
+    print("\\"*80)
+    print("\\"*80)
+    print("\\"*80)
+    print("\\"*80)
+
     retrievers = {
         "Regions": cm.ParameterRetriever("Regions"),
         "DemandAndConversions": cm.ParameterRetriever("DemandAndConversions"),
