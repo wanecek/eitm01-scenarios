@@ -70,7 +70,11 @@ def improve_numerics(self):
         assert len(M) == 1, "Expected one and only one IndexedMatrix"
         M = M[0]
         max_val = M.M.max()
+        if max_val == 1:
+            continue
         for name, obj in C["pars"].items():
+            if name == "tol":
+                continue
             if isinstance(obj, IndexedMatrix):
                 obj.M = obj.M / max_val
             else:
@@ -223,28 +227,33 @@ for scn in SCENARIOS:
         cons.remove(8)
 
     self.make_x0()
-    sng_other_areas = self.x0["crp"].loc[
+
+    sng_areas = self.x0["crp"].loc[
         [
             "Semi-natural meadows",
+            "Semi-natural pastures",
             "Semi-natural pastures, thin soils",
             "Semi-natural pastures, wooded",
         ]
     ]
+    fallow_areas = self.x0["crp"].loc[["Fallow"]]
 
-    C8_crp = [sng_other_areas]
-    C8_rel = ["<="]
+    C8_crp = [sng_areas, fallow_areas]
+    C8_rel = ["<=", "=="]
+    C8_tol = [None, 1e-4]
 
     if scn == "SCN_SNG":
         tol = 0.01
         sng_areas = self.x0["crp"].loc[["Semi-natural pastures"]]
         C8_crp += [sng_areas * (1 - tol)]
         C8_rel += [">="]
+        C8_tol += [None]
 
-    self.make(cons, verbose=True, C8_crp=C8_crp, C8_rel=C8_rel)
+    self.make(cons, verbose=True, C8_crp=C8_crp, C8_rel=C8_rel, C8_tol=C8_tol)
 
-    def make_CX_organic(tol=0.001):
-        cr_x0_org = self.x0["crp"].xs("organic", level="prod_system")
-        cr_x0_con = self.x0["crp"].xs("conventional", level="prod_system")
+    def make_CX_organic_cattle(tol=0.001):
+        cr_x0_org = self.x0["ani"][["cattle"]].xs("organic", level="prod_system")
+        cr_x0_con = self.x0["ani"][["cattle"]].xs("conventional", level="prod_system")
         both_zero = cr_x0_org[cr_x0_org == 0].index.intersection(
             cr_x0_con[cr_x0_con == 0].index
         )
@@ -257,15 +266,16 @@ for scn in SCENARIOS:
             .to_frame(name="share")
         )
         shares_df *= 1 - tol
+        shares_df = shares_df.reset_index()
 
-        col_idx = self.x_idx["crp"]
+        col_idx = self.x_idx["ani"]
         row_idx = cr_x0_org.index
 
         row_idx_df = row_idx.to_frame(index=False).reset_index(names="row_i")
         col_idx_df = col_idx.to_frame(index=False).reset_index(names="col_i")
 
-        merged = row_idx_df.merge(col_idx_df, on=["crop", "region"]).merge(
-            shares_df, on=["crop", "region"]
+        merged = row_idx_df.merge(col_idx_df, on=row_idx.names).merge(
+            shares_df, on=["species", "breed", "region"]
         )
         merged["values"] = np.where(
             merged["prod_system"] == "organic", 1 - merged["share"], -merged["share"]
@@ -280,10 +290,10 @@ for scn in SCENARIOS:
 
         M = scipy.sparse.hstack(
             [
-                scipy.sparse.csc_array((n_rows, len(self.x_idx["ani"]))),
                 scipy.sparse.coo_array(
                     (values, (row_i, col_i)), shape=(n_rows, n_cols)
                 ).tocsc(),
+                scipy.sparse.csc_array((n_rows, len(self.x_idx["crp"]))),
                 scipy.sparse.csc_array((n_rows, len(self.x_idx["fds"]))),
             ],
             format="csc",
@@ -291,15 +301,18 @@ for scn in SCENARIOS:
 
         IM = IndexedMatrix(M, row_idx=row_idx, col_idx={})
 
-        self.constraints["CX: Organic ratio"] = {
+        self.constraints["CX: Share of organic cattle"] = {
             "left": lambda x, A: A.M @ x,
             "right": lambda A: 0,
             "rel": ">=",
             "pars": {"A": IM},
         }
+        print(
+            "Added constraint ensuring a maintained share of organic cattle production."
+        )
 
     if "_ORG" in scn:
-        make_CX_organic()
+        make_CX_organic_cattle()
         if 7 in cons:
             self.make_C7()
 
