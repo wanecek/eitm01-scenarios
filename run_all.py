@@ -34,9 +34,8 @@ session = cm.Session(
 
 SCENARIOS = [
     "BASELINE",
-    "SCN_BASE",
+    "SCN_CORE",
     "SCN_MIN_LEY",
-    "SCN_REDUCED_MILK",
     "SCN_SNG",
     "SCN_ORG",
 ]
@@ -45,17 +44,10 @@ session.add_scenario(
     "BASELINE", years=[2020], pars="all", scenario_workbooks="default_fix"
 )
 
-session.add_scenario("SCN_BASE", years=[2020], pars="all", scenario_workbooks="base")
+session.add_scenario("SCN_CORE", years=[2020], pars="all", scenario_workbooks="base")
 
 session.add_scenario(
     "SCN_MIN_LEY", years=[2020], pars="all", scenario_workbooks=["base", "scn-min-ley"]
-)
-
-session.add_scenario(
-    "SCN_REDUCED_MILK",
-    years=[2020],
-    pars="all",
-    scenario_workbooks=["base", "scn-milk"],
 )
 
 session.add_scenario("SCN_SNG", years=[2020], pars="all", scenario_workbooks="base")
