@@ -527,6 +527,8 @@ for scn in SCENARIOS:
                 "solver": "GUROBI",
                 "reoptimize": True,
                 "verbose": True,
+
+                "BarConvTol": 1e-3,
             }
         ],
     )
