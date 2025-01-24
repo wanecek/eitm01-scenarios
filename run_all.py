@@ -229,8 +229,6 @@ for scn in SCENARIOS:
         h.calculate()
 
     cons = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]
-    if scn == "BASELINE":
-        cons.remove(8)
 
     self.make_x0()
 
@@ -244,18 +242,20 @@ for scn in SCENARIOS:
     ]
     fallow_areas = self.x0["crp"].loc[["Fallow"]]
 
-    C8_crp = [sng_areas, fallow_areas]
-    C8_rel = ["<=", "=="]
-    C8_tol = [None, 1e-4]
+    C8_params = {
+        "C8_crp" : [sng_areas,  fallow_areas],
+        "C8_rel" : ["<=",       "=="],
+        "C8_tol" : [None,       1e-4],
+    }
 
-    if scn == "SCN_SNG":
-        tol = 0.01
-        sng_areas = self.x0["crp"].loc[["Semi-natural pastures"]]
-        C8_crp += [sng_areas * (1 - tol)]
-        C8_rel += [">="]
-        C8_tol += [None]
+    if scn == "BASELINE":
+        cons.remove(8)
+    elif scn == "SCN_SNG":
+        tol = 1e-3
+        C8_params["C8_crp"][0] = sng_areas * (1 - tol)
+        C8_params["C8_rel"][0] = ">="
 
-    self.make(cons, verbose=True, C8_crp=C8_crp, C8_rel=C8_rel, C8_tol=C8_tol)
+    self.make(cons, verbose=True, **C8_params)
 
     def make_CX_organic_cattle(tol=0.001):
         cr_x0_org = self.x0["ani"][["cattle"]].xs("organic", level="prod_system")
@@ -514,7 +514,7 @@ for scn in SCENARIOS:
             "pars": {"M": prot_mask, "b": b},
         }
 
-    self.constraints["CX: Protein"] = protein_map_as_cons(0.95 * max_protein_amount)
+    self.constraints["CX: Protein"] = protein_map_as_cons(0.975 * max_protein_amount)
     # Overwrite old problem with standard optimization objective,
     # but with the protein constraint added
     self.problem = self.get_cvx_problem()
