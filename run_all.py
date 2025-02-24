@@ -6,21 +6,33 @@ import os
 sys.path.insert(0, os.path.join(os.getcwd(), CM_BASEPATH))
 
 import CIBUSmod as cm
-import CIBUSmod.utils.plot as plot
 
-import time
 import numpy as np
 import pandas as pd
 import scipy
-import matplotlib.pyplot as plt
 import cvxpy
 
-from typing import Literal
-
-from CIBUSmod.utils.misc import inv_dict, aggregate_data_coords_pair
 from CIBUSmod.optimisation.indexed_matrix import IndexedMatrix
 from CIBUSmod.optimisation.utils import make_cvxpy_constraint
 from itertools import product
+
+def aggregate_data_coords_pair(values, row_i, col_i):
+    if (len(values) != len(row_i)) or (len(values) != len(col_i)):
+        raise ValueError(
+            "Length mismatch. Lists values, row_i and col_i did not all have the same length."
+        )
+    if len(values) == 0:
+        return ([], ([], []))
+    # Combine rows, cols, and values into a single array for aggregation
+    data = np.vstack((row_i, col_i, values)).T
+    # Aggregate using numpy
+    unique_coords, indices = np.unique(data[:, :2], axis=0, return_inverse=True)
+    aggregated_values = np.zeros(len(unique_coords))
+    np.add.at(aggregated_values, indices, data[:, 2])
+    # Split unique coordinates back into rows and cols
+    unique_rows, unique_cols = unique_coords.T
+    return (aggregated_values, (unique_rows, unique_cols))
+
 
 # Create session
 session = cm.Session(
@@ -128,6 +140,7 @@ for scn in SCENARIOS:
     feed_mgmt = cm.FeedMgmt(
         herds=herds,
         par=retrievers["FeedMgmt"],
+        type="FeedDist"
     )
 
     # Instantiate geo distributor
@@ -230,7 +243,7 @@ for scn in SCENARIOS:
 
     cons = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14]
 
-    self.make_x0()
+    self.get_x0()
 
     sng_areas = self.x0["crp"].loc[
         [
@@ -517,7 +530,7 @@ for scn in SCENARIOS:
     self.constraints["CX: Protein"] = protein_map_as_cons(0.975 * max_protein_amount)
     # Overwrite old problem with standard optimization objective,
     # but with the protein constraint added
-    self.problem = self.get_cvx_problem()
+    self.problem = self.define_cvx_problem()
 
     self.solve(
         apply_solution=False,
