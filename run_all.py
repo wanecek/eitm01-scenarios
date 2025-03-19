@@ -36,7 +36,7 @@ def aggregate_data_coords_pair(values, row_i, col_i):
 
 # Create session
 session = cm.Session(
-    name="main",
+    name="main-mac",
     data_path="data",
     data_path_default=CM_BASEPATH + "/data/default",
 )
