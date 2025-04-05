@@ -1,0 +1,4 @@
+data/output/
+*.sqlite
+data/~\$*.xlsx
+data/ecoinvent
